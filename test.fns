@@ -1,0 +1,6 @@
+; test.asm
+Forever                          = $C047
+clrmem                           = $C020
+RESET                            = $C006
+NMI                              = $C04A
+vblankwait                       = $C000
