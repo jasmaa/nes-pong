@@ -1,0 +1,12 @@
+; pong.asm
+LoadSpritesLoop                  = $C049
+Forever                          = $C07D
+palette                          = $E01C
+LoadSprites                      = $C047
+LoadPaletteLoop                  = $C063
+LoadPalette                      = $C054
+clrmem                           = $C020
+RESET                            = $C006
+sprites                          = $E000
+NMI                              = $C080
+vblankwait                       = $C000

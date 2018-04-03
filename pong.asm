@@ -62,6 +62,37 @@ clrmem:
   lda #%10000000
   sta $2001 ; set PPUMASK
   
+LoadSprites:
+  ldx #$00
+LoadSpritesLoop:
+  lda sprites, x
+  sta $0200, x
+  inx
+  cpx #$1C
+  bne LoadSpritesLoop
+
+LoadPalette:
+  lda $2002
+  lda #$3F
+  sta $2006
+  lda #$00
+  sta $2006
+  ldx #$00
+LoadPaletteLoop:
+  lda palette, x
+  sta $2007
+  inx
+  cpx #$04
+  bne LoadPaletteLoop
+
+  ; set ppu
+  lda #%10000000
+  sta $2000 ; set PPUCTRL
+  lda #%00010000
+  sta $2001 ; set PPUMASK
+  lda #%00000000
+  sta $2005 ; disable PPU scrolling
+  
 Forever:
   jmp Forever
 
@@ -73,13 +104,6 @@ NMI:
   lda #$02
   sta $4014
   
-  lda #%1001000
-  sta $2000 ; set PPUCTRL
-  lda #%00011110
-  sta $2001 ; set PPUMASK
-  lda #%00000000
-  sta $2005 ; disable PPU scrolling
-  
   rti
 
   
@@ -88,8 +112,23 @@ NMI:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   .bank 1
-  .org $FFFA
   
+  .org $E000
+  sprites:
+    .db $79,$01,$00,$20
+	.db $80,$01,$00,$20
+	.db $81,$01,$00,$20
+	
+	.db $79,$01,$00,$E0
+	.db $80,$01,$00,$E0
+	.db $81,$01,$00,$E0
+	
+	.db $80,$00,$00,$80
+	
+  palette:
+    .db $0F,$17,$28,$39
+  
+  .org $FFFA
   .dw NMI
   .dw RESET
   .dw 0 ; no irq interrupt
