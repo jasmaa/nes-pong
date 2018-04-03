@@ -9,7 +9,7 @@
   .inesmir 1
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; PROGRAM - MAIN SETUP
+; PROGRAM - MAIN
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   .bank 0
@@ -101,3 +101,4 @@ NMI:
 
   .bank 2
   .org $0000
+  .incbin "graphics.chr"
