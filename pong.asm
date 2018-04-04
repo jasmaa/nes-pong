@@ -27,6 +27,7 @@ ctrl_1		.rs 1
 ctrl_2		.rs 1
 score_1		.rs 1
 score_2		.rs 1
+rand_seed	.rs 1
 
 STATE_TITLE		= $00
 STATE_PLAYING	= $01
@@ -54,6 +55,22 @@ vblankwait:
   bpl vblankwait
   rts
 
+; update random num
+prng:
+  ldx #$08
+  lda rand_seed+0
+  prng_1:
+    asl A
+    rol rand_seed+1
+    bcc prng_2
+    eor #$2D
+  prng_2:
+	dex
+	bne prng_1
+	sta rand_seed+0
+	cmp #$00 ; reload flags
+	rts
+	
 ; ===================  
 ; === START RESET ===
 
@@ -135,6 +152,10 @@ LoadPaletteLoop:
   lda #STATE_PLAYING
   sta gamestate
   
+  ; set seed
+  lda #$66
+  sta rand_seed
+  
   ; set ppu
   lda #%10010000
   sta $2000
@@ -200,6 +221,7 @@ RunGameOver:
   
 RunPlaying:
   ; Running main game
+  
   
   ; update ball location
   lda ball_x
@@ -293,20 +315,20 @@ RunPlaying:
     lda ball_x
     cmp #RWALL
     bcc RightWallDone
-    lda #$00
-    sta ball_r_vel
-    lda #$01
-    sta ball_l_vel
+    
+	jsr ScorePointPaddle1
+	jsr RespawnBall
+	jmp GameEngineDone
   RightWallDone:
   
   BounceLeftWall:
     lda ball_x
     cmp #LWALL
     bcs LeftWallDone
-    lda #$00
-    sta ball_l_vel
-    lda #$01
-    sta ball_r_vel
+    
+	; put score 2 here
+	jsr RespawnBall
+	jmp GameEngineDone
   LeftWallDone:
   
   BounceUpWall:
@@ -336,6 +358,12 @@ RunPlaying:
 	adc #$03
 	cmp ball_x
 	bcc BouncePaddle1Done
+	lda #PADDLE_1_X
+	sec
+	sbc #$03
+	cmp ball_x
+	bcs BouncePaddle1Done
+	
 	lda paddle_1_y
 	sec
 	sbc #$0B				; 08 for paddle and 03 for ball
@@ -350,6 +378,28 @@ RunPlaying:
     sta ball_r_vel
     lda #$00
     sta ball_l_vel
+	
+	; apply prng
+	; make flick beter!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	jsr prng
+	and #$02
+	beq FlickDown
+	  lda rand_seed
+	  and #$01
+	  clc
+	  adc ball_u_vel
+	  sta ball_u_vel
+	  lda #$00
+	  sta ball_d_vel
+	  jmp BouncePaddle1Done
+	FlickDown:
+	  lda rand_seed
+	  and #$01
+	  clc
+	  adc ball_d_vel
+	  sta ball_d_vel
+	  lda #$00
+	  sta ball_u_vel
   BouncePaddle1Done:
   
   BouncePaddle2:
@@ -358,6 +408,12 @@ RunPlaying:
 	sbc #$03
 	cmp ball_x
 	bcs BouncePaddle2Done
+	lda #PADDLE_2_X
+	clc
+	adc #$03
+	cmp ball_x
+	bcc BouncePaddle2Done
+	
 	lda paddle_2_y
 	sec
 	sbc #$0B
@@ -437,6 +493,27 @@ UpdateSprites:
   sta $0214
   
   rts
+
+ScorePointPaddle1:
+  lda score_1
+  clc
+  adc #$01
+  sta score_1
+  ; check for win
+  rts
+
+RespawnBall:
+  lda #$80
+  sta ball_x
+  sta ball_y
+  lda #$01
+  sta ball_d_vel
+  sta ball_r_vel
+  lda #$00
+  sta ball_u_vel
+  sta ball_l_vel
+  rts
+
   
 ; === END NMI INTERRUPT ===
 ; =========================
