@@ -117,7 +117,7 @@ LoadSpritesLoop:
   lda sprites, x
   sta $0200, x
   inx
-  cpx #$1C
+  cpx #$24
   bne LoadSpritesLoop
 
 LoadPalette:
@@ -326,7 +326,7 @@ RunPlaying:
     cmp #LWALL
     bcs LeftWallDone
     
-	; put score 2 here
+	jsr ScorePointPaddle2
 	jsr RespawnBall
 	jmp GameEngineDone
   LeftWallDone:
@@ -381,25 +381,25 @@ RunPlaying:
 	
 	; apply prng
 	; make flick beter!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	jsr prng
-	and #$02
-	beq FlickDown
-	  lda rand_seed
-	  and #$01
-	  clc
-	  adc ball_u_vel
-	  sta ball_u_vel
-	  lda #$00
-	  sta ball_d_vel
-	  jmp BouncePaddle1Done
-	FlickDown:
-	  lda rand_seed
-	  and #$01
-	  clc
-	  adc ball_d_vel
-	  sta ball_d_vel
-	  lda #$00
-	  sta ball_u_vel
+	;jsr prng
+	;and #$02
+	;beq FlickDown
+	;  lda rand_seed
+	;  and #$01
+	;  clc
+	;  adc ball_u_vel
+	;  sta ball_u_vel
+	;  lda #$00
+	;  sta ball_d_vel
+	;  jmp BouncePaddle1Done
+	;FlickDown:
+	;  lda rand_seed
+	;  and #$01
+	;  clc
+	;  adc ball_d_vel
+	;  sta ball_d_vel
+	;  lda #$00
+	;  sta ball_u_vel
   BouncePaddle1Done:
   
   BouncePaddle2:
@@ -492,6 +492,16 @@ UpdateSprites:
   adc #$0F
   sta $0214
   
+  ; Score
+  lda score_1
+  clc
+  adc #$02  ; offset to get to 0 sprite
+  sta $0221
+  lda score_2
+  clc
+  adc #$02
+  sta $021D
+  
   rts
 
 ScorePointPaddle1:
@@ -499,7 +509,30 @@ ScorePointPaddle1:
   clc
   adc #$01
   sta score_1
-  ; check for win
+  
+  ; TEMP check for win
+  lda score_1
+  cmp #$07
+  bne Score1Done
+  lda #STATE_GAMEOVER
+  sta gamestate
+
+  Score1Done:
+  rts
+ScorePointPaddle2:
+  lda score_2
+  clc
+  adc #$01
+  sta score_2
+  
+  ; TEMP check for win
+  lda score_2
+  cmp #$07
+  bne Score2Done
+  lda #STATE_GAMEOVER
+  sta gamestate
+
+  Score2Done:
   rts
 
 RespawnBall:
@@ -526,15 +559,23 @@ RespawnBall:
   
   .org $E000
   sprites:
+    ; Paddle 1
     .db $78,$01,$00,$20 ; 00
 	.db $80,$01,$00,$20 ; 04
 	.db $88,$01,$00,$20 ; 08
-	
+
+    ; Paddle 2	
 	.db $78,$01,$00,$E0 ; 0C
 	.db $80,$01,$00,$E0 ; 10
 	.db $88,$01,$00,$E0 ; 14
 	
+	; Ball 1
 	.db $80,$00,$00,$80 ; 18
+	
+	; Score 2
+	.db $10,$02,$00,$A0 ; 1C
+	; Score 1
+	.db $10,$02,$00,$60 ; 20
 	
   palette:
     .db $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39 
