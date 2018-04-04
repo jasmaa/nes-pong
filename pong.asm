@@ -284,8 +284,7 @@ RunPlaying:
 	sta paddle_2_y
   MovePaddle2DownDone:
 	
-  ; bounces
-  
+  ; wall bounces
   BounceRightWall:
     lda ball_x
     cmp #RWALL
@@ -325,6 +324,51 @@ RunPlaying:
     lda #$01
     sta ball_u_vel
   DownWallDone:
+  
+  ; paddle bounces
+  BouncePaddle1:
+    lda #PADDLE_1_X
+	clc
+	adc #$03
+	cmp ball_x
+	bcc BouncePaddle1Done
+	lda paddle_1_y
+	sec
+	sbc #$08
+    cmp ball_y
+    bcs BouncePaddle1Done
+	lda paddle_1_y
+	clc
+	adc #$08
+    cmp ball_y
+    bcc BouncePaddle1Done
+	lda #$01
+    sta ball_r_vel
+    lda #$00
+    sta ball_l_vel
+  BouncePaddle1Done:
+  
+  BouncePaddle2:
+    lda #PADDLE_2_X
+	sec
+	sbc #$03
+	cmp ball_x
+	bcs BouncePaddle2Done
+	lda paddle_2_y
+	sec
+	sbc #$08
+    cmp ball_y
+    bcs BouncePaddle2Done
+	lda paddle_2_y
+	clc
+	adc #$08
+    cmp ball_y
+    bcc BouncePaddle2Done
+	lda #$01
+    sta ball_l_vel
+    lda #$00
+    sta ball_r_vel
+  BouncePaddle2Done:
   
   jmp GameEngineDone
   
