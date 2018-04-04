@@ -22,7 +22,7 @@ ball_d_vel	.rs 1
 ball_l_vel	.rs 1
 ball_r_vel	.rs 1
 paddle_1_y	.rs 1
-paddle_1_h	.rs 1
+paddle_2_y	.rs 1
 ctrl_1		.rs 1
 ctrl_2		.rs 1
 score_1		.rs 1
@@ -39,6 +39,8 @@ LWALL		= $04
 
 PADDLE_1_X	= $20
 PADDLE_2_X	= $E0
+PADDLE_1_H	= $18
+PADDLE_2_H	= $18
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; PROGRAM - MAIN
@@ -124,6 +126,11 @@ LoadPaletteLoop:
   sta ball_d_vel
   sta ball_r_vel
   
+  ; set paddles init
+  lda #$80
+  sta paddle_1_y
+  sta paddle_2_y
+  
   ; set init state
   lda #STATE_PLAYING
   sta gamestate
@@ -160,6 +167,8 @@ NMI:
   
   
 ; read controllers
+  jsr ReadCtrl1
+  jsr ReadCtrl2
 
 ; GAME ENGINE
 GameEngine:
@@ -174,9 +183,9 @@ GameEngine:
   cmp #STATE_PLAYING
   beq RunPlaying
   
-  lda gamestate
-  cmp #STATE_GAMEOVER
-  beq RunGameOver
+  ;lda gamestate
+  ;cmp #STATE_GAMEOVER
+  ;beq RunGameOver
 GameEngineDone:
   jsr UpdateSprites
   rti
@@ -199,11 +208,86 @@ RunPlaying:
   sbc ball_l_vel
   sta ball_x
   
+  lda ball_y
+  clc
+  adc ball_d_vel
+  sta ball_y
+  
+  lda ball_y
+  sec
+  sbc ball_u_vel
+  sta ball_y
+  
+  ; move paddle locations
+  MovePaddle1:
+    ; hit up wall
+    lda paddle_1_y
+	sec
+	sbc #$08
+	cmp #UWALL
+	bcc MovePaddle1UpDone
+	
+	; move paddle up
+    lda ctrl_1
+    and #%0001000
+    beq MovePaddle1UpDone
+	lda paddle_1_y
+	sec
+	sbc #$01
+	sta paddle_1_y
+  MovePaddle1UpDone:
+    ; hit down wall
+    lda paddle_1_y
+	clc
+	adc #$08
+	cmp #DWALL
+	bcs MovePaddle1DownDone
+  
+    ; move paddle down
+	lda ctrl_1
+    and #%0000100
+    beq MovePaddle1DownDone
+	lda paddle_1_y
+	clc
+	adc #$01
+	sta paddle_1_y
+  MovePaddle1DownDone:
+  
+  ; same as paddle 1
+  MovePaddle2:
+    lda paddle_2_y
+	sec
+	sbc #$08
+	cmp #UWALL
+	bcc MovePaddle2UpDone
+  
+    lda ctrl_2
+    and #%0001000
+    beq MovePaddle2UpDone
+	lda paddle_2_y
+	sec
+	sbc #$01
+	sta paddle_2_y
+  MovePaddle2UpDone:
+    lda paddle_2_y
+	clc
+	adc #$08
+	cmp #DWALL
+	bcs MovePaddle2DownDone
+  
+	lda ctrl_2
+    and #%0000100
+    beq MovePaddle2DownDone
+	lda paddle_2_y
+	clc
+	adc #$01
+	sta paddle_2_y
+  MovePaddle2DownDone:
+	
   ; bounces
   
-  lda ball_x
-  
   BounceRightWall:
+    lda ball_x
     cmp #RWALL
     bcc RightWallDone
     lda #$00
@@ -213,13 +297,34 @@ RunPlaying:
   RightWallDone:
   
   BounceLeftWall:
+    lda ball_x
     cmp #LWALL
-    bcc LeftWallDone
+    bcs LeftWallDone
     lda #$00
     sta ball_l_vel
     lda #$01
     sta ball_r_vel
   LeftWallDone:
+  
+  BounceUpWall:
+    lda ball_y
+    cmp #UWALL
+    bcs UpWallDone
+    lda #$00
+    sta ball_u_vel
+    lda #$01
+    sta ball_d_vel
+  UpWallDone:
+  
+  BounceDownWall:
+    lda ball_y
+    cmp #DWALL
+    bcc DownWallDone
+    lda #$00
+    sta ball_d_vel
+    lda #$01
+    sta ball_u_vel
+  DownWallDone:
   
   jmp GameEngineDone
   
@@ -228,22 +333,66 @@ RunGameOver:
   jmp GameEngineDone
 ; END GAME ENGINE
 
-UpdateSprites:
+
+; read controllers
+ReadCtrl1:
+  lda #$01
+  sta $4016
+  lda #$00
+  sta $4016
+  ldx #$08
+ReadCtrl1Loop:
+  lda $4016
+  lsr A
+  rol ctrl_1
+  dex
+  bne ReadCtrl1Loop
+  rts
+
+ReadCtrl2:
+  lda #$01
+  sta $4016
+  lda #$00
+  sta $4016
+  ldx #$08
+ReadCtrl2Loop:
+  lda $4017
+  lsr A
+  rol ctrl_2
+  dex
+  bne ReadCtrl2Loop
+  rts
   
+; update sprites
+UpdateSprites:
+
   lda ball_y
   sta $0218
-  
-  lda #$00
-  sta $0219
-  
-  lda #$00
-  sta $021A
-  
   lda ball_x
   sta $021B
   
+  ; paddle 1 movement
+  lda paddle_1_y
+  sta $0204
+  sec
+  sbc #$08
+  sta $0200
+  clc
+  adc #$0F
+  sta $0208
+  
+  ; paddle 2 movement
+  lda paddle_2_y
+  sta $0210
+  sec
+  sbc #$08
+  sta $020C
+  clc
+  adc #$0F
+  sta $0214
+  
   rts
-
+  
 ; === END NMI INTERRUPT ===
 ; =========================
 
@@ -255,15 +404,15 @@ UpdateSprites:
   
   .org $E000
   sprites:
-    .db $79,$01,$00,$20
-	.db $80,$01,$00,$20
-	.db $81,$01,$00,$20
+    .db $78,$01,$00,$20 ; 00
+	.db $80,$01,$00,$20 ; 04
+	.db $88,$01,$00,$20 ; 08
 	
-	.db $79,$01,$00,$E0
-	.db $80,$01,$00,$E0
-	.db $81,$01,$00,$E0
+	.db $78,$01,$00,$E0 ; 0C
+	.db $80,$01,$00,$E0 ; 10
+	.db $88,$01,$00,$E0 ; 14
 	
-	.db $80,$00,$00,$80
+	.db $80,$00,$00,$80 ; 18
 	
   palette:
     .db $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39 
