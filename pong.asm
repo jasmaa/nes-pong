@@ -183,15 +183,19 @@ GameEngine:
   cmp #STATE_PLAYING
   beq RunPlaying
   
-  ;lda gamestate
-  ;cmp #STATE_GAMEOVER
-  ;beq RunGameOver
+  lda gamestate
+  cmp #STATE_GAMEOVER
+  beq RunGameOver
 GameEngineDone:
   jsr UpdateSprites
   rti
   
 RunTitle:
   ; Running title
+  jmp GameEngineDone
+
+RunGameOver:
+  ; Running game over screen
   jmp GameEngineDone
   
 RunPlaying:
@@ -334,12 +338,12 @@ RunPlaying:
 	bcc BouncePaddle1Done
 	lda paddle_1_y
 	sec
-	sbc #$08
+	sbc #$0B				; 08 for paddle and 03 for ball
     cmp ball_y
     bcs BouncePaddle1Done
 	lda paddle_1_y
 	clc
-	adc #$08
+	adc #$0B
     cmp ball_y
     bcc BouncePaddle1Done
 	lda #$01
@@ -356,12 +360,12 @@ RunPlaying:
 	bcs BouncePaddle2Done
 	lda paddle_2_y
 	sec
-	sbc #$08
+	sbc #$0B
     cmp ball_y
     bcs BouncePaddle2Done
 	lda paddle_2_y
 	clc
-	adc #$08
+	adc #$0B
     cmp ball_y
     bcc BouncePaddle2Done
 	lda #$01
@@ -372,9 +376,6 @@ RunPlaying:
   
   jmp GameEngineDone
   
-RunGameOver:
-  ; Running game over screen
-  jmp GameEngineDone
 ; END GAME ENGINE
 
 
