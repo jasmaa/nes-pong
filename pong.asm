@@ -140,7 +140,6 @@ LoadPaletteLoop:
   sta ball_x
   sta ball_y
   lda #$01
-  sta ball_d_vel
   sta ball_r_vel
   
   ; set paddles init
@@ -254,7 +253,7 @@ RunPlaying:
 	bcc MovePaddle1UpDone
 	
 	; move paddle up
-    lda ctrl_1
+    lda ctrl_2
     and #%0001000
     beq MovePaddle1UpDone
 	lda paddle_1_y
@@ -270,7 +269,7 @@ RunPlaying:
 	bcs MovePaddle1DownDone
   
     ; move paddle down
-	lda ctrl_1
+	lda ctrl_2
     and #%0000100
     beq MovePaddle1DownDone
 	lda paddle_1_y
@@ -287,7 +286,7 @@ RunPlaying:
 	cmp #UWALL
 	bcc MovePaddle2UpDone
   
-    lda ctrl_2
+    lda ctrl_1
     and #%0001000
     beq MovePaddle2UpDone
 	lda paddle_2_y
@@ -301,7 +300,7 @@ RunPlaying:
 	cmp #DWALL
 	bcs MovePaddle2DownDone
   
-	lda ctrl_2
+	lda ctrl_1
     and #%0000100
     beq MovePaddle2DownDone
 	lda paddle_2_y
@@ -379,27 +378,9 @@ RunPlaying:
     lda #$00
     sta ball_l_vel
 	
-	; apply prng
-	; make flick beter!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	;jsr prng
-	;and #$02
-	;beq FlickDown
-	;  lda rand_seed
-	;  and #$01
-	;  clc
-	;  adc ball_u_vel
-	;  sta ball_u_vel
-	;  lda #$00
-	;  sta ball_d_vel
-	;  jmp BouncePaddle1Done
-	;FlickDown:
-	;  lda rand_seed
-	;  and #$01
-	;  clc
-	;  adc ball_d_vel
-	;  sta ball_d_vel
-	;  lda #$00
-	;  sta ball_u_vel
+	; apply prng to paddle
+	jsr prng
+	jsr PRNGPaddle	
   BouncePaddle1Done:
   
   BouncePaddle2:
@@ -428,6 +409,10 @@ RunPlaying:
     sta ball_l_vel
     lda #$00
     sta ball_r_vel
+	
+	; apply prng to paddle
+	jsr prng
+	jsr PRNGPaddle
   BouncePaddle2Done:
   
   jmp GameEngineDone
@@ -536,17 +521,48 @@ ScorePointPaddle2:
   rts
 
 RespawnBall:
+  jsr prng
+  and #$02
+  beq RespawnRight
+  RespawnLeft:
+    lda #$01
+    sta ball_l_vel
+	lda #$00
+    sta ball_r_vel
+	jmp RespawnDirDone
+  RespawnRight:
+    lda #$01
+    sta ball_r_vel
+	lda #$00
+    sta ball_l_vel
+  RespawnDirDone:
+
   lda #$80
   sta ball_x
   sta ball_y
-  lda #$01
-  sta ball_d_vel
-  sta ball_r_vel
   lda #$00
   sta ball_u_vel
-  sta ball_l_vel
+  sta ball_d_vel
   rts
 
+; apply prng to paddle
+; do prng first!
+; fix slope of ball!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+PRNGPaddle:
+    and #$02
+    beq FlickDown
+    lda #$01
+    sta ball_u_vel
+    lda #$00
+    sta ball_d_vel
+  jmp FlickDone
+  FlickDown:
+	lda #$01
+	sta ball_d_vel
+	lda #$00
+	sta ball_u_vel
+  FlickDone:
+    rts
   
 ; === END NMI INTERRUPT ===
 ; =========================
