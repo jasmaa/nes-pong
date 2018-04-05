@@ -28,6 +28,8 @@ ctrl_2		.rs 1
 score_1		.rs 1
 score_2		.rs 1
 rand_seed	.rs 1
+pointerLo	.rs 1
+pointerHi	.rs 1
 
 STATE_TITLE		= $00
 STATE_PLAYING	= $01
@@ -133,6 +135,31 @@ LoadPaletteLoop:
   inx
   cpx #$20
   bne LoadPaletteLoop
+
+LoadBG:
+  lda $2002
+  lda #$20	; remember top row doesn't get rendered
+  sta $2006
+  lda #$00
+  sta $2006
+  ldx #$00
+  ldy #$00
+  
+  lda #LOW(background)
+  sta pointerLo
+  lda #HIGH(background)
+  sta pointerHi
+  
+; FIGURE OUT HOW TO LOAD ENTIRE BG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+LoadBGLoop:
+  lda [pointerLo], y	; can only be used with y
+  sta $2007
+  iny
+  bne LoadBGLoop
+  inc pointerHi
+  inx
+  cpx #$04
+  bne LoadBGLoop
 
   
   ; set ball init
@@ -596,6 +623,9 @@ PRNGPaddle:
   palette:
     .db $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39 
 	.db $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39
+  
+  background:
+    .incbin "graphics.nam"
   
   .org $FFFA
   .dw NMI
