@@ -17,10 +17,10 @@
 gamestate	.rs 1
 ball_x		.rs 1
 ball_y		.rs 1
-ball_u_vel	.rs 1
-ball_d_vel	.rs 1
-ball_l_vel	.rs 1
-ball_r_vel	.rs 1
+ball_u		.rs 1
+ball_r		.rs 1
+ball_x_speed	.rs 1
+ball_y_speed	.rs 1
 paddle_1_y	.rs 1
 paddle_2_y	.rs 1
 ctrl_1		.rs 1
@@ -44,6 +44,7 @@ PADDLE_1_X	= $20
 PADDLE_2_X	= $E0
 PADDLE_1_H	= $18
 PADDLE_2_H	= $18
+PADDLE_SPEED= $02
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; PROGRAM - MAIN
@@ -167,7 +168,13 @@ LoadBGLoop:
   sta ball_x
   sta ball_y
   lda #$01
-  sta ball_r_vel
+  sta ball_r
+  
+  lda #$01
+  sta ball_x_speed
+  lda #$01
+  sta ball_y_speed
+  
   
   ; set paddles init
   lda #$80
@@ -250,25 +257,34 @@ RunPlaying:
   
   
   ; update ball location
-  lda ball_x
-  clc
-  adc ball_r_vel
-  sta ball_x
-  
-  lda ball_x
-  sec
-  sbc ball_l_vel
-  sta ball_x
-  
-  lda ball_y
-  clc
-  adc ball_d_vel
-  sta ball_y
-  
+  ; move ball vert
+  lda ball_u
+  beq MoveBallDown
   lda ball_y
   sec
-  sbc ball_u_vel
+  sbc ball_y_speed
   sta ball_y
+  jmp MoveBallVertDone
+  MoveBallDown:
+    lda ball_y
+	clc
+	adc ball_y_speed
+	sta ball_y
+  MoveBallVertDone:
+  ; move ball hori
+  lda ball_r
+  beq MoveBallLeft
+  lda ball_x
+  clc
+  adc ball_x_speed
+  sta ball_x
+  jmp MoveBallHoriDone
+  MoveBallLeft:
+    lda ball_x
+	sec
+	sbc ball_x_speed
+	sta ball_x
+  MoveBallHoriDone:
   
   ; move paddle locations
   MovePaddle1:
@@ -285,7 +301,7 @@ RunPlaying:
     beq MovePaddle1UpDone
 	lda paddle_1_y
 	sec
-	sbc #$01
+	sbc #PADDLE_SPEED
 	sta paddle_1_y
   MovePaddle1UpDone:
     ; hit down wall
@@ -301,7 +317,7 @@ RunPlaying:
     beq MovePaddle1DownDone
 	lda paddle_1_y
 	clc
-	adc #$01
+	adc #PADDLE_SPEED
 	sta paddle_1_y
   MovePaddle1DownDone:
   
@@ -318,7 +334,7 @@ RunPlaying:
     beq MovePaddle2UpDone
 	lda paddle_2_y
 	sec
-	sbc #$01
+	sbc #PADDLE_SPEED
 	sta paddle_2_y
   MovePaddle2UpDone:
     lda paddle_2_y
@@ -332,7 +348,7 @@ RunPlaying:
     beq MovePaddle2DownDone
 	lda paddle_2_y
 	clc
-	adc #$01
+	adc #PADDLE_SPEED
 	sta paddle_2_y
   MovePaddle2DownDone:
 	
@@ -362,19 +378,15 @@ RunPlaying:
     cmp #UWALL
     bcs UpWallDone
     lda #$00
-    sta ball_u_vel
-    lda #$01
-    sta ball_d_vel
+	sta ball_u
   UpWallDone:
   
   BounceDownWall:
     lda ball_y
     cmp #DWALL
     bcc DownWallDone
-    lda #$00
-    sta ball_d_vel
     lda #$01
-    sta ball_u_vel
+	sta ball_u
   DownWallDone:
   
   ; paddle bounces
@@ -400,10 +412,9 @@ RunPlaying:
 	adc #$0B
     cmp ball_y
     bcc BouncePaddle1Done
+	
 	lda #$01
-    sta ball_r_vel
-    lda #$00
-    sta ball_l_vel
+	sta ball_r
 	
 	; apply prng to paddle
 	jsr prng
@@ -432,10 +443,9 @@ RunPlaying:
 	adc #$0B
     cmp ball_y
     bcc BouncePaddle2Done
-	lda #$01
-    sta ball_l_vel
-    lda #$00
-    sta ball_r_vel
+	
+	lda #$00
+	sta ball_r
 	
 	; apply prng to paddle
 	jsr prng
@@ -552,43 +562,28 @@ RespawnBall:
   and #$02
   beq RespawnRight
   RespawnLeft:
-    lda #$01
-    sta ball_l_vel
-	lda #$00
-    sta ball_r_vel
+    lda #$00
+	sta ball_r
 	jmp RespawnDirDone
   RespawnRight:
     lda #$01
-    sta ball_r_vel
-	lda #$00
-    sta ball_l_vel
+	sta ball_r
   RespawnDirDone:
 
   lda #$80
   sta ball_x
   sta ball_y
-  lda #$00
-  sta ball_u_vel
-  sta ball_d_vel
+  
   rts
 
 ; apply prng to paddle
 ; do prng first!
 ; fix slope of ball!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 PRNGPaddle:
-    and #$02
-    beq FlickDown
-    lda #$01
-    sta ball_u_vel
-    lda #$00
-    sta ball_d_vel
-  jmp FlickDone
-  FlickDown:
-	lda #$01
-	sta ball_d_vel
-	lda #$00
-	sta ball_u_vel
-  FlickDone:
+    and #$03
+	lsr  A
+	sta ball_x_speed
+	
     rts
   
 ; === END NMI INTERRUPT ===
