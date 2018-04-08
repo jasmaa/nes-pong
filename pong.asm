@@ -224,7 +224,6 @@ NMI:
   sta $2005 ; disable PPU scrolling
   sta $2005
   
-  
 ; read controllers
   jsr ReadCtrl1
   jsr ReadCtrl2
@@ -262,15 +261,25 @@ RunTitle:
   beq GameEngineDone
   
   ; start game
-  ; background glitchy load
+  lda #STATE_PLAYING
+  sta gamestate
+  
+  lda #%00010000 ; disable NMI
+  sta $2000
+  lda #%00000000 ; disable rendering
+  sta $2001
+
+  ; load bg  
   lda #LOW(arena_bg)
   sta pointerLo
   lda #HIGH(arena_bg)
   sta pointerHi
   jsr LoadBG
   
-  lda #STATE_PLAYING
-  sta gamestate
+  lda #%10010000
+  sta $2000
+  lda #%00011110
+  sta $2001
   
   jmp GameEngineDone
 
@@ -280,7 +289,6 @@ RunGameOver:
   
 RunPlaying:
   ; Running main game
-  
   
   ; update ball location
   ; move ball vert
