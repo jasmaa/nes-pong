@@ -23,6 +23,8 @@ ball_x_speed	.rs 1
 ball_y_speed	.rs 1
 paddle_1_y	.rs 1
 paddle_2_y	.rs 1
+paddle_1_u	.rs 1
+paddle_2_u	.rs 1
 ctrl_1		.rs 1
 ctrl_2		.rs 1
 score_1		.rs 1
@@ -73,6 +75,27 @@ prng:
 	sta rand_seed+0
 	cmp #$00 ; reload flags
 	rts
+
+LoadBG:
+  lda $2002
+  lda #$20	; remember top row doesn't get rendered
+  sta $2006
+  lda #$00
+  sta $2006
+  ldx #$00
+  ldy #$00
+  
+; Load entire BG
+LoadBGLoop:
+  lda [pointerLo], y	; can only be used with y
+  sta $2007
+  iny
+  bne LoadBGLoop
+  inc pointerHi
+  inx
+  cpx #$04
+  bne LoadBGLoop
+  rts
 	
 ; ===================  
 ; === START RESET ===
@@ -137,30 +160,12 @@ LoadPaletteLoop:
   cpx #$20
   bne LoadPaletteLoop
 
-LoadBG:
-  lda $2002
-  lda #$20	; remember top row doesn't get rendered
-  sta $2006
-  lda #$00
-  sta $2006
-  ldx #$00
-  ldy #$00
-  
-  lda #LOW(background)
+; bg to title
+  lda #LOW(title_bg)
   sta pointerLo
-  lda #HIGH(background)
+  lda #HIGH(title_bg)
   sta pointerHi
-  
-; FIGURE OUT HOW TO LOAD ENTIRE BG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-LoadBGLoop:
-  lda [pointerLo], y	; can only be used with y
-  sta $2007
-  iny
-  bne LoadBGLoop
-  inc pointerHi
-  inx
-  cpx #$04
-  bne LoadBGLoop
+  jsr LoadBG  
 
   
   ; set ball init
@@ -182,7 +187,7 @@ LoadBGLoop:
   sta paddle_2_y
   
   ; set init state
-  lda #STATE_PLAYING
+  lda #STATE_TITLE
   sta gamestate
   
   ; set seed
@@ -246,6 +251,27 @@ GameEngineDone:
   
 RunTitle:
   ; Running title
+  
+  ; disable sprites
+  lda #%00001110
+  sta $2001 ; set PPUMASK
+  
+  ; check for start pressed
+  lda ctrl_1
+  and #%00010000
+  beq GameEngineDone
+  
+  ; start game
+  ; background glitchy load
+  lda #LOW(arena_bg)
+  sta pointerLo
+  lda #HIGH(arena_bg)
+  sta pointerHi
+  jsr LoadBG
+  
+  lda #STATE_PLAYING
+  sta gamestate
+  
   jmp GameEngineDone
 
 RunGameOver:
@@ -303,6 +329,10 @@ RunPlaying:
 	sec
 	sbc #PADDLE_SPEED
 	sta paddle_1_y
+	
+	lda #$01
+	sta paddle_1_u
+	
   MovePaddle1UpDone:
     ; hit down wall
     lda paddle_1_y
@@ -319,6 +349,10 @@ RunPlaying:
 	clc
 	adc #PADDLE_SPEED
 	sta paddle_1_y
+	
+	lda #$00
+	sta paddle_1_u
+	
   MovePaddle1DownDone:
   
   ; same as paddle 1
@@ -336,6 +370,10 @@ RunPlaying:
 	sec
 	sbc #PADDLE_SPEED
 	sta paddle_2_y
+	
+	lda #$01
+	sta paddle_2_u
+	
   MovePaddle2UpDone:
     lda paddle_2_y
 	clc
@@ -350,6 +388,10 @@ RunPlaying:
 	clc
 	adc #PADDLE_SPEED
 	sta paddle_2_y
+	
+	lda #$00
+	sta paddle_2_u
+	
   MovePaddle2DownDone:
 	
   ; wall bounces
@@ -418,7 +460,9 @@ RunPlaying:
 	
 	; apply prng to paddle
 	jsr prng
-	jsr PRNGPaddle	
+	jsr PRNGPaddleX
+	jsr prng
+	jsr PRNGPaddleY
   BouncePaddle1Done:
   
   BouncePaddle2:
@@ -449,7 +493,9 @@ RunPlaying:
 	
 	; apply prng to paddle
 	jsr prng
-	jsr PRNGPaddle
+	jsr PRNGPaddleX
+	jsr prng
+	jsr PRNGPaddleY
   BouncePaddle2Done:
   
   jmp GameEngineDone
@@ -553,7 +599,7 @@ ScorePointPaddle2:
   bne Score2Done
   lda #STATE_GAMEOVER
   sta gamestate
-
+  
   Score2Done:
   rts
 
@@ -570,6 +616,10 @@ RespawnBall:
 	sta ball_r
   RespawnDirDone:
 
+  lda #$01
+  sta ball_x_speed
+  sta ball_y_speed
+  
   lda #$80
   sta ball_x
   sta ball_y
@@ -579,10 +629,22 @@ RespawnBall:
 ; apply prng to paddle
 ; do prng first!
 ; fix slope of ball!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-PRNGPaddle:
-    and #$03
-	lsr  A
+PRNGPaddleX:
+    and #$01
+	clc
+	adc #$01
 	sta ball_x_speed
+	
+	rts
+	
+PRNGPaddleY:
+	and #$01
+	clc
+	adc #$01
+	sta ball_y_speed
+	
+	lda paddle_1_u
+	sta ball_u
 	
     rts
   
@@ -619,8 +681,12 @@ PRNGPaddle:
     .db $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39 
 	.db $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39, $0F,$17,$28,$39
   
-  background:
-    .incbin "graphics.nam"
+  title_bg:
+    .incbin "title.nam"
+  arena_bg:
+    .incbin "arena.nam"
+  game_over_bg:
+    .incbin "game_over.nam"
   
   .org $FFFA
   .dw NMI
