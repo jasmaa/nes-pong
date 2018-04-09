@@ -165,8 +165,7 @@ LoadPaletteLoop:
   sta pointerLo
   lda #HIGH(title_bg)
   sta pointerHi
-  jsr LoadBG  
-
+  jsr LoadBG
   
   ; set ball init
   lda #$80
@@ -269,7 +268,8 @@ RunTitle:
   lda #%00000000 ; disable rendering
   sta $2001
 
-  ; load bg  
+  ; load bg
+  ; NOTE: don't load BG on every NMI interrupt
   lda #LOW(arena_bg)
   sta pointerLo
   lda #HIGH(arena_bg)
@@ -285,6 +285,19 @@ RunTitle:
 
 RunGameOver:
   ; Running game over screen
+  
+  ; disable sprites
+  lda #%00001110
+  sta $2001 ; set PPUMASK
+  
+  ; check for start pressed
+  lda ctrl_1
+  and #%00010000
+  beq GameEngineDone
+  
+  ; play again 
+  jmp RESET
+  
   jmp GameEngineDone
   
 RunPlaying:
@@ -470,7 +483,7 @@ RunPlaying:
 	jsr prng
 	jsr PRNGPaddleX
 	jsr prng
-	jsr PRNGPaddleY
+	jsr PRNGPaddleY_1
   BouncePaddle1Done:
   
   BouncePaddle2:
@@ -503,7 +516,7 @@ RunPlaying:
 	jsr prng
 	jsr PRNGPaddleX
 	jsr prng
-	jsr PRNGPaddleY
+	jsr PRNGPaddleY_2
   BouncePaddle2Done:
   
   jmp GameEngineDone
@@ -593,6 +606,8 @@ ScorePointPaddle1:
   lda #STATE_GAMEOVER
   sta gamestate
 
+  jsr LoadGameOver
+  
   Score1Done:
   rts
 ScorePointPaddle2:
@@ -607,6 +622,8 @@ ScorePointPaddle2:
   bne Score2Done
   lda #STATE_GAMEOVER
   sta gamestate
+  
+  jsr LoadGameOver
   
   Score2Done:
   rts
@@ -624,8 +641,15 @@ RespawnBall:
 	sta ball_r
   RespawnDirDone:
 
-  lda #$01
+  jsr prng
+  and #$01
+  clc
+  adc #$01
   sta ball_x_speed
+  jsr prng
+  and #$01
+  clc
+  adc #$01
   sta ball_y_speed
   
   lda #$80
@@ -645,7 +669,7 @@ PRNGPaddleX:
 	
 	rts
 	
-PRNGPaddleY:
+PRNGPaddleY_1:
 	and #$01
 	clc
 	adc #$01
@@ -655,7 +679,39 @@ PRNGPaddleY:
 	sta ball_u
 	
     rts
+PRNGPaddleY_2:
+	and #$01
+	clc
+	adc #$01
+	sta ball_y_speed
+	
+	lda paddle_2_u
+	sta ball_u
+	
+    rts
+
+LoadGameOver:
+  ; load game over
+  lda #%00010000 ; disable NMI
+  sta $2000
+  lda #%00000000 ; disable rendering
+  sta $2001
+
+  ; load bg
+  ; NOTE: don't load BG on every NMI interrupt
+  lda #LOW(game_over_bg)
+  sta pointerLo
+  lda #HIGH(game_over_bg)
+  sta pointerHi
+  jsr LoadBG
   
+  lda #%10010000
+  sta $2000
+  lda #%00011110
+  sta $2001
+  
+  rts
+	
 ; === END NMI INTERRUPT ===
 ; =========================
 
